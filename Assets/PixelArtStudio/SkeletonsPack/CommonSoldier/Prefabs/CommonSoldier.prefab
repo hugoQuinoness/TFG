@@ -234,8 +234,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 2
-  rotationSmoothing: 5
-  diagonalSpeedFactor: 0.707
+  runSpeed: 5
+  directionSmoothing: 10
 --- !u!114 &5611767194924786290
 MonoBehaviour:
   m_ObjectHideFlags: 0

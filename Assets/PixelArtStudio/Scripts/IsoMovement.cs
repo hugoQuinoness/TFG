@@ -1,22 +1,20 @@
+using System.Diagnostics;
 using UnityEngine;
 
 [RequireComponent(typeof(Animator), typeof(Rigidbody2D))]
-public class IsoMovementCardinalCorrect : MonoBehaviour
+[DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
+public class IsoMovement : MonoBehaviour
 {
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float runSpeed = 8f; // Nueva variable para la velocidad de correr
     [SerializeField] private float directionSmoothing = 10f;
-
-    // Direcciones cardinales en espacio isométrico
-    private readonly Vector2 _isoUp = new Vector2(-1, 1).normalized;
-    private readonly Vector2 _isoDown = new Vector2(1, -1).normalized;
-    private readonly Vector2 _isoLeft = new Vector2(-1, -1).normalized;
-    private readonly Vector2 _isoRight = new Vector2(1, 1).normalized;
 
     private Animator _animator;
     private Rigidbody2D _rb;
     private Vector2 _targetDirection;
     private Vector2 _currentDirection;
+    private bool _isRunning; // Nueva variable para verificar si está corriendo
 
     void Awake()
     {
@@ -40,12 +38,13 @@ public class IsoMovementCardinalCorrect : MonoBehaviour
     private void GetInputDirection()
     {
         _targetDirection = Vector2.zero;
+        _isRunning = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift); // Verificar si Shift está presionado
 
-        // Mapeo directo de teclas a direcciones isométricas
-        if (Input.GetKey(KeyCode.W)) _targetDirection += _isoUp;      // Arriba (isométrico)
-        if (Input.GetKey(KeyCode.S)) _targetDirection += _isoDown;    // Abajo (isométrico)
-        if (Input.GetKey(KeyCode.A)) _targetDirection += _isoLeft;    // Izquierda (isométrico)
-        if (Input.GetKey(KeyCode.D)) _targetDirection += _isoRight;   // Derecha (isométrico)
+        // Mapeo directo de teclas a direcciones absolutas
+        if (Input.GetKey(KeyCode.W)) _targetDirection += Vector2.up;      // Arriba
+        if (Input.GetKey(KeyCode.S)) _targetDirection += Vector2.down;    // Abajo
+        if (Input.GetKey(KeyCode.A)) _targetDirection += Vector2.left;    // Izquierda
+        if (Input.GetKey(KeyCode.D)) _targetDirection += Vector2.right;   // Derecha
 
         // Normalizar solo si hay input
         if (_targetDirection.magnitude > 0)
@@ -66,25 +65,21 @@ public class IsoMovementCardinalCorrect : MonoBehaviour
 
     private void MoveCharacter()
     {
-        // Movimiento directo sin conversión adicional
-        _rb.velocity = _targetDirection * moveSpeed;
+        // Usar la velocidad de correr si Shift está presionado, de lo contrario usar la velocidad normal
+        float speed = _isRunning ? runSpeed : moveSpeed;
+        _rb.velocity = _targetDirection * speed;
     }
 
     private void UpdateAnimator()
     {
-        // Mapeo inverso para animaciones (de isométrico a cartesiano)
-        Vector2 animDirection = Vector2.zero;
-
-        if (_targetDirection.magnitude > 0.1f)
-        {
-            // Convertir dirección isométrica a coordenadas de animación
-            animDirection.x = _targetDirection.x + _targetDirection.y;
-            animDirection.y = _targetDirection.y - _targetDirection.x;
-            animDirection.Normalize();
-        }
-
         _animator.SetFloat("Horizontal", _currentDirection.x);
         _animator.SetFloat("Vertical", _currentDirection.y);
         _animator.SetBool("Walk", _targetDirection.magnitude > 0.1f);
+        _animator.SetBool("Run", _isRunning); // Actualizar la animación de correr
+    }
+
+    private string GetDebuggerDisplay()
+    {
+        return ToString();
     }
 }
