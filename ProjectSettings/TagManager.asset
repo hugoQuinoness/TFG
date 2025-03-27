@@ -42,3 +42,12 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Suelo
+    uniqueID: 1860953965
+    locked: 0
+  - name: Decoracion
+    uniqueID: 1871421143
+    locked: 0
+  - name: PlayerGround
+    uniqueID: 3314844109
+    locked: 0

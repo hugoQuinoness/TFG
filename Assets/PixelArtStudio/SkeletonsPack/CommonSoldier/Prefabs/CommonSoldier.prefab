@@ -98,6 +98,7 @@ GameObject:
   - component: {fileID: 7117427321808994893}
   - component: {fileID: 3699920646487288762}
   - component: {fileID: 5611767194924786290}
+  - component: {fileID: 6345243136018886324}
   m_Layer: 0
   m_Name: CommonSoldier
   m_TagString: Player
@@ -252,3 +253,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3db72469e1e07b459f19a4646062131, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &6345243136018886324
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8385226143460851807}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d50c02b07e634a5468ca7ce92d8733ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  health: 100

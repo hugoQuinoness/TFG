@@ -3,8 +3,10 @@ using UnityEngine;
 
 [RequireComponent(typeof(Animator), typeof(Rigidbody2D))]
 [DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
-public class IsoMovement : MonoBehaviour
+public class PlayerControler : MonoBehaviour
 {
+    public static PlayerControler instance;
+
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float runSpeed = 8f; // Nueva variable para la velocidad de correr
@@ -24,9 +26,19 @@ public class IsoMovement : MonoBehaviour
 
     void Awake()
     {
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else if (instance!=this)
+        {
+            Destroy(gameObject);
+        }
+        
         _animator = GetComponent<Animator>();
         _rb = GetComponent<Rigidbody2D>();
         _rb.gravityScale = 0;
+
     }
 
     void Update()
