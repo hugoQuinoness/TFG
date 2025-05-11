@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 665129739065573112}
   - component: {fileID: 16483262020830534}
   - component: {fileID: 5802952284461184076}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: HitArea
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -72,7 +72,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: -980123187
-  m_SortingLayer: 3
+  m_SortingLayer: 4
   m_SortingOrder: 1
   m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   m_Color: {r: 1, g: 0.98679245, b: 0.98679245, a: 0.5294118}
