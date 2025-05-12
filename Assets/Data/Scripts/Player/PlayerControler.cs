@@ -2,7 +2,6 @@ using System.Diagnostics;
 using UnityEngine;
 
 [RequireComponent(typeof(Animator), typeof(Rigidbody2D), typeof(BoxCollider2D))]
-[DebuggerDisplay("{" + nameof(GetDebuggerDisplay) + "(),nq}")]
 public class PlayerControler : MonoBehaviour
 {
     public static PlayerControler instance;
@@ -11,7 +10,6 @@ public class PlayerControler : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float runSpeed = 8f;
     [SerializeField] private float directionSmoothing = 10f;
-    [SerializeField] private float collisionOffset = 0.1f; // Offset para evitar pegarse a las paredes
 
     [Header("Attack Settings")]
     [SerializeField] private GameObject hitArea;
@@ -82,11 +80,7 @@ public class PlayerControler : MonoBehaviour
 
     private void UpdateCurrentDirection()
     {
-        _currentDirection = Vector2.Lerp(
-            _currentDirection,
-            _targetDirection.magnitude > 0 ? _targetDirection : _currentDirection,
-            directionSmoothing * Time.deltaTime
-        );
+        _currentDirection = Vector2.Lerp(_currentDirection, _targetDirection.magnitude > 0 ? _targetDirection : _currentDirection, directionSmoothing * Time.deltaTime);
     }
 
     private void MoveCharacter()
@@ -94,88 +88,14 @@ public class PlayerControler : MonoBehaviour
         if (_targetDirection.magnitude > 0)
         {
             float speed = _isRunning ? runSpeed : moveSpeed;
+            
             Vector2 desiredPosition = (Vector2)transform.position + _targetDirection * speed * Time.fixedDeltaTime;
 
-            // --- NUEVO CÓDIGO DE COLISIÓN ---
-            RaycastHit2D hit = Physics2D.BoxCast(
-                transform.position,
-                _collider.size * 0.9f, // Reducción del 10% para evitar pegarse
-                0f,
-                _targetDirection,
-                speed * Time.fixedDeltaTime + 0.05f, // Pequeño offset
-                LayerMask.GetMask("Walls") // Solo paredes
-            );
-
-            if (!hit) // Si no hay pared en la dirección de movimiento
-            {
-                _rb.MovePosition(desiredPosition);
-            }
-            else // Intenta deslizarse a lo largo de la pared
-            {
-                TrySlideAlongWall(speed);
-            }
-            // --- FIN DEL NUEVO CÓDIGO ---
+            _rb.MovePosition(desiredPosition);
         }
         else
         {
             _rb.velocity = Vector2.zero;
-        }
-    }
-
-    // Método auxiliar para deslizamiento
-    private void TrySlideAlongWall(float speed)
-    {
-        // Intenta mover solo en X
-        if (Mathf.Abs(_targetDirection.x) > 0.1f)
-        {
-            Vector2 xDir = new Vector2(_targetDirection.x, 0).normalized;
-            if (!Physics2D.BoxCast(transform.position, _collider.size * 0.9f, 0f,
-                                 xDir, speed * Time.fixedDeltaTime, LayerMask.GetMask("Walls")))
-            {
-                _rb.MovePosition((Vector2)transform.position + xDir * speed * Time.fixedDeltaTime);
-                return;
-            }
-        }
-
-        // Intenta mover solo en Y
-        if (Mathf.Abs(_targetDirection.y) > 0.1f)
-        {
-            Vector2 yDir = new Vector2(0, _targetDirection.y).normalized;
-            if (!Physics2D.BoxCast(transform.position, _collider.size * 0.9f, 0f,
-                                 yDir, speed * Time.fixedDeltaTime, LayerMask.GetMask("Walls")))
-            {
-                _rb.MovePosition((Vector2)transform.position + yDir * speed * Time.fixedDeltaTime);
-            }
-        }
-    }
-
-    private void TrySlideAlongWall()
-    {
-        // Intentar movimiento solo en X
-        Vector2 xMove = new Vector2(_targetDirection.x, 0).normalized;
-        if (xMove.magnitude > 0 && !Physics2D.BoxCast(
-            transform.position,
-            _collider.size * 0.9f,
-            0f,
-            xMove,
-            moveSpeed * Time.fixedDeltaTime + collisionOffset,
-            LayerMask.GetMask("Wall")))
-        {
-            _rb.MovePosition((Vector2)transform.position + xMove * moveSpeed * Time.fixedDeltaTime);
-            return;
-        }
-
-        // Intentar movimiento solo en Y
-        Vector2 yMove = new Vector2(0, _targetDirection.y).normalized;
-        if (yMove.magnitude > 0 && !Physics2D.BoxCast(
-            transform.position,
-            _collider.size * 0.9f,
-            0f,
-            yMove,
-            moveSpeed * Time.fixedDeltaTime + collisionOffset,
-            LayerMask.GetMask("Wall")))
-        {
-            _rb.MovePosition((Vector2)transform.position + yMove * moveSpeed * Time.fixedDeltaTime);
         }
     }
 
@@ -210,19 +130,5 @@ public class PlayerControler : MonoBehaviour
             Destroy(instantiatedHitArea, 0.4f);
             _animator.SetTrigger("Attack");
         }
-    }
-
-    // Método para manejar colisiones persistentes (por si acaso)
-    private void OnCollisionStay2D(Collision2D collision)
-    {
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Wall"))
-        {
-            transform.position = _lastSafePosition;
-        }
-    }
-
-    private string GetDebuggerDisplay()
-    {
-        return ToString();
     }
 }
