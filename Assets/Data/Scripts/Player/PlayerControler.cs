@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 [RequireComponent(typeof(Animator), typeof(Rigidbody2D), typeof(BoxCollider2D))]
 public class PlayerControler : MonoBehaviour
@@ -18,13 +19,14 @@ public class PlayerControler : MonoBehaviour
     [SerializeField] private float hitAreaHorizontalOffset = 0.5f;
 
     private Animator _animator;
-    private Rigidbody2D _rb;
-    private BoxCollider2D _collider;
-    private Vector2 _targetDirection;
+    private Rigidbody2D rb;
+    private Vector2 targetDirection;
     private Vector2 _currentDirection;
     private bool _isRunning;
-    private Vector2 _lastSafePosition; // Para guardar posición sin colisión
 
+
+    [Header("References")]
+    private SpriteRenderer spriteRenderer;
     void Awake()
     {
         if (instance == null)
@@ -37,15 +39,8 @@ public class PlayerControler : MonoBehaviour
         }
 
         _animator = GetComponent<Animator>();
-        _rb = GetComponent<Rigidbody2D>();
-        _collider = GetComponent<BoxCollider2D>();
-
-        // Configuración del Rigidbody para colisiones
-        _rb.gravityScale = 0;
-        _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-        _rb.freezeRotation = true;
-
-        _lastSafePosition = transform.position;
+        rb = GetComponent<Rigidbody2D>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
     void Update()
@@ -64,38 +59,47 @@ public class PlayerControler : MonoBehaviour
 
     private void GetInputDirection()
     {
-        _targetDirection = Vector2.zero;
+        targetDirection = Vector2.zero;
         _isRunning = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-        if (Input.GetKey(KeyCode.W)) _targetDirection += Vector2.up;
-        if (Input.GetKey(KeyCode.S)) _targetDirection += Vector2.down;
-        if (Input.GetKey(KeyCode.A)) _targetDirection += Vector2.left;
-        if (Input.GetKey(KeyCode.D)) _targetDirection += Vector2.right;
+        if (Input.GetKey(KeyCode.W)) targetDirection += Vector2.up;
+        if (Input.GetKey(KeyCode.S)) targetDirection += Vector2.down;
+        if (Input.GetKey(KeyCode.A)) targetDirection += Vector2.left;
+        if (Input.GetKey(KeyCode.D)) targetDirection += Vector2.right;
 
-        if (_targetDirection.magnitude > 0)
+        if (targetDirection.magnitude > 0)
         {
-            _targetDirection.Normalize();
+            targetDirection.Normalize();
         }
     }
 
     private void UpdateCurrentDirection()
     {
-        _currentDirection = Vector2.Lerp(_currentDirection, _targetDirection.magnitude > 0 ? _targetDirection : _currentDirection, directionSmoothing * Time.deltaTime);
+        _currentDirection = Vector2.Lerp(_currentDirection, targetDirection.magnitude > 0 ? targetDirection : _currentDirection, directionSmoothing * Time.deltaTime);
     }
 
     private void MoveCharacter()
     {
-        if (_targetDirection.magnitude > 0)
+        if (targetDirection.magnitude > 0)
         {
             float speed = _isRunning ? runSpeed : moveSpeed;
             
-            Vector2 desiredPosition = (Vector2)transform.position + _targetDirection * speed * Time.fixedDeltaTime;
+            Vector2 desiredPosition = (Vector2)transform.position + targetDirection * speed * Time.fixedDeltaTime;
 
-            _rb.MovePosition(desiredPosition);
+            rb.MovePosition(desiredPosition);
         }
         else
         {
-            _rb.velocity = Vector2.zero;
+            rb.velocity = Vector2.zero;
+        }
+
+        if (targetDirection.x > 0)
+        {
+            spriteRenderer.flipX = true; 
+        }
+        else if (targetDirection.x < 0)
+        {
+            spriteRenderer.flipX = false; 
         }
     }
 
@@ -103,10 +107,10 @@ public class PlayerControler : MonoBehaviour
     {
         _animator.SetFloat("Horizontal", _currentDirection.x);
         _animator.SetFloat("Vertical", _currentDirection.y);
-        _animator.SetBool("Walk", _targetDirection.magnitude > 0.1f);
+        _animator.SetBool("Walk", targetDirection.magnitude > 0.1f);
         _animator.SetBool("Run", _isRunning);
 
-        if (_rb.velocity.x == 0 && _rb.velocity.y == 0)
+        if (rb.velocity.x == 0 && rb.velocity.y == 0)
         {
             _animator.SetTrigger("Standing");
         }
