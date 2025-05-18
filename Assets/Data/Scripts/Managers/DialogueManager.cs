@@ -57,11 +57,6 @@ public class DialogueManager : MonoBehaviour
         };
     }
 
-    private void Start()
-    {
-        EnterDialogueModeWithoutCollision(currentDialogue);
-    }
-
     private void OnDestroy()
     {
         DialogueControls.InvokeContinueDialogue -= ContinueDialogue;
@@ -71,6 +66,11 @@ public class DialogueManager : MonoBehaviour
     {
 
         if(tagsToHandle > 0)
+        {
+            return;
+        }
+
+        if(!isDialogueActive)
         {
             return;
         }

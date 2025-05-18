@@ -52,14 +52,12 @@ public class Player : MonoBehaviour
 
     private void OnEnterDialogueMode()
     {
-        Debug.Log("Entering dialogue mode");
         dialogueControls.enabled = true;
         playerControler.enabled = false;
     }
 
     private void OnExitDialogueMode()
     {
-        Debug.Log("Exiting dialogue mode");
         dialogueControls.enabled = false;
         playerControler.enabled = true;
     }

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -11,6 +10,7 @@ public class PlayerControler : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float runSpeed = 8f;
     [SerializeField] private float directionSmoothing = 10f;
+    private float currentSpeed;
 
     [Header("Attack Settings")]
     [SerializeField] private GameObject hitArea;
@@ -41,11 +41,13 @@ public class PlayerControler : MonoBehaviour
         _animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        hitAreaSpawnPoint = GameObject.Find("HitAreaSpawnPoint").transform;
     }
 
     void Update()
     {
         GetInputDirection();
+        GetCharacterSpeed();
         UpdateCurrentDirection();
         UpdateAnimator();
         UpdateHitAreaSpawnPoint();
@@ -55,6 +57,19 @@ public class PlayerControler : MonoBehaviour
     void FixedUpdate()
     {
         MoveCharacter();
+    }
+
+    public void GetCharacterSpeed()
+    {
+        if (targetDirection.magnitude > 0)
+        {
+            currentSpeed = _isRunning ? runSpeed : moveSpeed;
+        }
+        else
+        {
+            currentSpeed = 0f;
+        }
+        Debug.Log(currentSpeed);
     }
 
     private void GetInputDirection()
@@ -83,7 +98,9 @@ public class PlayerControler : MonoBehaviour
         if (targetDirection.magnitude > 0)
         {
             float speed = _isRunning ? runSpeed : moveSpeed;
-            
+
+            Debug.Log(currentSpeed);
+
             Vector2 desiredPosition = (Vector2)transform.position + targetDirection * speed * Time.fixedDeltaTime;
 
             rb.MovePosition(desiredPosition);
@@ -107,13 +124,7 @@ public class PlayerControler : MonoBehaviour
     {
         _animator.SetFloat("Horizontal", _currentDirection.x);
         _animator.SetFloat("Vertical", _currentDirection.y);
-        _animator.SetBool("Walk", targetDirection.magnitude > 0.1f);
-        _animator.SetBool("Run", _isRunning);
-
-        if (rb.velocity.x == 0 && rb.velocity.y == 0)
-        {
-            _animator.SetTrigger("Standing");
-        }
+        _animator.SetFloat("Speed", currentSpeed);
     }
 
     private void UpdateHitAreaSpawnPoint()
