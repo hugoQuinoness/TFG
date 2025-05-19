@@ -5,13 +5,15 @@ using UnityEngine;
 public class WizardMovement : MonoBehaviour
 {
     public float speed = 2f;
-    public float stopDistance = 0.5f; // Distancia mínima para detenerse cerca del jugador
-    public float attackDistance = 1f; // Distancia mínima para atacar al jugador
+    public float stopDistance = 0.5f; // Distancia mï¿½nima para detenerse cerca del jugador
+    public float attackDistance = 1f; // Distancia mï¿½nima para atacar al jugador
     private Rigidbody2D rb;
     private Transform target;
     private Vector2 moveDirection;
     private Animator animator;
     private SpriteRenderer spriteRenderer; // Referencia al componente SpriteRenderer
+
+    private bool canMove = true; // Variable para controlar el movimiento
 
     private void Awake()
     {
@@ -28,6 +30,11 @@ public class WizardMovement : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!canMove)
+        {
+            return;
+        }
+
         if (target)
         {
             Vector3 direction = (target.position - transform.position).normalized;
@@ -39,7 +46,7 @@ public class WizardMovement : MonoBehaviour
                 moveDirection = direction;
                 animator.SetBool("Run", true);
 
-                // Invertir el sprite dependiendo de la dirección
+                // Invertir el sprite dependiendo de la direcciï¿½n
                 if (moveDirection.x > 0)
                 {
                     spriteRenderer.flipX = false; // Mirar a la derecha
@@ -54,7 +61,7 @@ public class WizardMovement : MonoBehaviour
                 moveDirection = Vector2.zero;
                 animator.SetBool("Run", false);
 
-                // Activar la animación de ataque si está dentro de la distancia de ataque
+                // Activar la animaciï¿½n de ataque si estï¿½ dentro de la distancia de ataque
                 if (distance <= attackDistance)
                 {
                     animator.SetTrigger("Attack");
@@ -68,6 +75,16 @@ public class WizardMovement : MonoBehaviour
         if (target)
         {
             rb.velocity = moveDirection * speed;
+        }
+    }
+    
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("PlayerDamageCollider"))
+        {
+            canMove = false;
+            animator.Play("Death");
+        
         }
     }
 }

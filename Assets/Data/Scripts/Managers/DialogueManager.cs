@@ -5,6 +5,9 @@ using UnityEngine;
 using Ink.Runtime;
 using System;
 using UnityEngine.UI;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.AddressableAssets;
+using UnityEngine.TextCore.Text;
 
 
 public class DialogueManager : MonoBehaviour
@@ -19,7 +22,7 @@ public class DialogueManager : MonoBehaviour
 
     public static DialogueManager Instance;
 
-    public TextAsset currentDialogue;
+    public UnityEngine.TextAsset currentDialogue;
 
     public Story currentStory;
 
@@ -37,6 +40,10 @@ public class DialogueManager : MonoBehaviour
 
     public int tagsToHandle;
 
+    private Coroutine typingCoroutine;
+
+    private AsyncOperationHandle<UnityEngine.TextAsset>? currentHandle;
+
     private void Awake()
     {
         if (Instance == null)
@@ -53,7 +60,8 @@ public class DialogueManager : MonoBehaviour
         tagHandlers = new Dictionary<string, Action<string>>
         {
             { "animation", HandleAnimationTag },
-            { "animateAndMove", HandleMoveWithAnimation}
+            { "animateAndMove", HandleMoveWithAnimation},
+            { "song", HandleSongTag },
         };
     }
 
@@ -65,18 +73,23 @@ public class DialogueManager : MonoBehaviour
     public void ContinueDialogue()
     {
 
-        if(tagsToHandle > 0)
+        if (tagsToHandle > 0)
         {
             return;
         }
 
-        if(!isDialogueActive)
+        if (!isDialogueActive)
         {
             return;
         }
 
         if (currentStory.canContinue)
         {
+            if (typingCoroutine != null)
+            {
+                StopCoroutine(typingCoroutine);
+            }
+
             HandleLine(currentStory.Continue());
             HandleTags(currentStory.currentTags);
         }
@@ -86,7 +99,7 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
-    public void EnterDialogueModeWithoutCollision(TextAsset textAsset)
+    public void EnterDialogueModeWithoutCollision(UnityEngine.TextAsset textAsset)
     {
         StartUI();
 
@@ -113,6 +126,8 @@ public class DialogueManager : MonoBehaviour
         isDialogueActive = false;
 
         currentDialogue = null;
+
+        Player.Instance.ChangeCameraPriority();
 
         InvokeOnDialogueExit?.Invoke();
     }
@@ -150,7 +165,7 @@ public class DialogueManager : MonoBehaviour
 
             string[] tagSplit = tag.Split(':');
 
-            if(tagSplit.Length == 1)
+            if (tagSplit.Length == 1)
             {
                 tagKey = tagSplit[0].Trim();
                 tagValue = "Default";
@@ -161,46 +176,10 @@ public class DialogueManager : MonoBehaviour
                 tagValue = tagSplit[1].Trim();
             }
 
-            if(string.IsNullOrEmpty(tagKey) || string.IsNullOrEmpty(tagValue))
-            {
-                Debug.LogWarning("Tag key or value is empty.");
-            }
-
-            if(tagHandlers.ContainsKey(tagKey))
+            if (tagHandlers.ContainsKey(tagKey))
             {
                 tagHandlers[tagKey](tagValue);
             }
-        }
-    }
-
-    public void StartUI()
-    {
-        dialogueBox.SetActive(true);
-
-        dialogueText.text = "";
-
-        nameText.text = "";
-    }
-
-    public void EndUI()
-    {
-        dialogueBox.SetActive(false);
-    }
-
-    public void UpdateDialogue(string text)
-    {
-        //StartCoroutine(TypeTextEffect(text));
-        dialogueText.text = text;
-    }
-
-    private IEnumerator TypeTextEffect(string text)
-    {
-        dialogueText.text = "";
-        
-        foreach (char c in text)
-        {
-            dialogueText.text += c;
-            yield return new WaitForSeconds(0.2f);
         }
     }
 
@@ -210,23 +189,19 @@ public class DialogueManager : MonoBehaviour
 
         if (split.Length < 5)
         {
-            Debug.LogWarning("El valor de movimiento con animación no tiene el formato esperado: " + value);
             return;
         }
 
         if (!float.TryParse(split[0], out float x))
         {
-            Debug.LogWarning("No se pudo parsear la coordenada X: " + split[0]);
             return;
         }
         if (!float.TryParse(split[1], out float y))
         {
-            Debug.LogWarning("No se pudo parsear la coordenada Y: " + split[1]);
             return;
         }
         if (!float.TryParse(split[2], out float time))
         {
-            Debug.LogWarning("No se pudo parsear el tiempo: " + split[2]);
             return;
         }
 
@@ -249,7 +224,6 @@ public class DialogueManager : MonoBehaviour
                 Boss2.Instance.PlayAnimation(animationName);
                 break;
             default:
-                Debug.LogWarning("Personaje desconocido en movimiento con animación: " + characterName);
                 break;
         }
     }
@@ -287,13 +261,57 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
+    private void HandleSongTag(string value)
+    {
+        SongManager.Instance.PlaySongFromAddressable(value);
+    }
+
+    public void StartUI()
+    {
+        dialogueBox.SetActive(true);
+
+        dialogueText.text = "";
+
+        nameText.text = "";
+    }
+
+    public void EndUI()
+    {
+        dialogueBox.SetActive(false);
+    }
+
+    public void UpdateDialogue(string text)
+    {
+        typingCoroutine = StartCoroutine(TypeTextEffect(text));
+    }
+
+    private IEnumerator TypeTextEffect(string text)
+    {
+        dialogueText.text = "";
+
+        int charIndex = 0;
+        foreach (char c in text.ToCharArray())
+        {
+            dialogueText.text += c;
+
+            if (charIndex % 2 == 0)
+            {
+                SFXManager.Instance.PlayTypingSFX();
+            }
+
+            charIndex++;
+            yield return new WaitForSeconds(0.05f);
+        }
+
+    }
+
     public void CheckSpeakerName(string name)
     {
         switch (name)
         {
             case "Judas":
                 nameText.text = "Judas";
-                
+
                 Player.Instance.ChangeCameraPriority();
                 portraitImage.sprite = Player.Instance.sprite;
                 break;
@@ -311,5 +329,28 @@ public class DialogueManager : MonoBehaviour
                 nameText.text = name;
                 break;
         }
-    }  
+    }
+
+    public IEnumerator StartDialogueByAdr3ss(string address)
+    {
+
+        if (currentHandle.HasValue && currentHandle.Value.IsValid())
+        {
+            Debug.Log("[SongManager] Releasing previous handle");
+            Addressables.Release(currentHandle.Value);
+        }
+
+        currentHandle = Addressables.LoadAssetAsync<UnityEngine.TextAsset>(address);
+
+        if (!currentHandle.HasValue)
+        {
+            Debug.LogError("[SongManager] currentHandle is null after LoadAssetAsync!");
+            yield break;
+        }
+
+        yield return currentHandle.Value;
+        
+        EnterDialogueModeWithoutCollision(currentHandle.Value.Result);
+
+    }
 }

@@ -21,8 +21,12 @@ public class DialogueControls : MonoBehaviour
 
     public void OnDestroy()
     {
-        input.actions["ContinueDialogue"].performed -= InvokeContinueDialogueFunc;
+        if (input != null && input.actions != null)
+        {
+            input.actions["ContinueDialogue"].performed -= InvokeContinueDialogueFunc;
+        }
     }
+
 
     private void InvokeContinueDialogueFunc(InputAction.CallbackContext context)
     {

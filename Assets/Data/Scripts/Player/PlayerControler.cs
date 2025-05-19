@@ -1,5 +1,8 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Animator), typeof(Rigidbody2D), typeof(BoxCollider2D))]
 public class PlayerControler : MonoBehaviour
@@ -10,23 +13,31 @@ public class PlayerControler : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float runSpeed = 8f;
     [SerializeField] private float directionSmoothing = 10f;
+    private Vector2 lastMoveDirection;
+    private Vector2 moveInput;
+    public Transform Aim;
+    private float speed;
     private float currentSpeed;
 
-    [Header("Attack Settings")]
-    [SerializeField] private GameObject hitArea;
-    [SerializeField] private Transform hitAreaSpawnPoint;
-    [SerializeField] private float hitAreaVerticalOffset = 0.5f;
-    [SerializeField] private float hitAreaHorizontalOffset = 0.5f;
+    private bool canMove;
 
-    private Animator _animator;
+    [Header("Attack Settings")]
+    public GameObject attackHitbox;
+    private float attackCooldown = 0.7f;
+    private bool canAttack = true;
+
+    private Animator animator;
     private Rigidbody2D rb;
     private Vector2 targetDirection;
-    private Vector2 _currentDirection;
-    private bool _isRunning;
+    public bool isRunning;
+    private PlayerInput playerInput;
+
+    private Action<InputAction.CallbackContext> moveCanceledDelegate;
+    private Action<InputAction.CallbackContext> attackPerformedDelegate;
+    private Action<InputAction.CallbackContext> runPerformedDelegate;
+    private Action<InputAction.CallbackContext> runCanceledDelegate;
 
 
-    [Header("References")]
-    private SpriteRenderer spriteRenderer;
     void Awake()
     {
         if (instance == null)
@@ -38,68 +49,97 @@ public class PlayerControler : MonoBehaviour
             Destroy(gameObject);
         }
 
-        _animator = GetComponent<Animator>();
+        animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        hitAreaSpawnPoint = GameObject.Find("HitAreaSpawnPoint").transform;
+        playerInput = EventSystem.current.GetComponent<PlayerInput>();
+
+        // Store delegates for proper unsubscribe
+        moveCanceledDelegate = ctx => SetLastMoveInput();
+        attackPerformedDelegate = ctx => HandleAttack();
+        runPerformedDelegate = ctx => { isRunning = true; animator.SetBool("isRunning", true); };
+        runCanceledDelegate = ctx => { isRunning = false; animator.SetBool("isRunning", false); };
+
+        playerInput.actions["Move"].canceled += moveCanceledDelegate;
+        playerInput.actions["Attack"].performed += attackPerformedDelegate;
+        playerInput.actions["Run"].performed += runPerformedDelegate;
+        playerInput.actions["Run"].canceled += runCanceledDelegate;
+    }
+
+    void OnDestroy()
+    {
+        if (playerInput != null && playerInput.actions != null)
+        {
+            playerInput.actions["Move"].canceled -= moveCanceledDelegate;
+            playerInput.actions["Attack"].performed -= attackPerformedDelegate;
+            playerInput.actions["Run"].performed -= runPerformedDelegate;
+            playerInput.actions["Run"].canceled -= runCanceledDelegate;
+        }
     }
 
     void Update()
     {
         GetInputDirection();
         GetCharacterSpeed();
-        UpdateCurrentDirection();
-        UpdateAnimator();
-        UpdateHitAreaSpawnPoint();
-        HandleAttack();
+        animator.SetFloat("Speed", currentSpeed);
+        animator.SetBool("isMoving", moveInput.magnitude > 0.1f);
     }
+
 
     void FixedUpdate()
     {
+        if (!canMove)
+        {
+            rb.velocity = Vector2.zero;
+            return;
+        }
+
         MoveCharacter();
+        CharacterAim();
     }
 
     public void GetCharacterSpeed()
     {
         if (targetDirection.magnitude > 0)
         {
-            currentSpeed = _isRunning ? runSpeed : moveSpeed;
+            currentSpeed = isRunning ? runSpeed : moveSpeed;
         }
         else
         {
             currentSpeed = 0f;
         }
-        Debug.Log(currentSpeed);
     }
 
     private void GetInputDirection()
     {
-        targetDirection = Vector2.zero;
-        _isRunning = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-        if (Input.GetKey(KeyCode.W)) targetDirection += Vector2.up;
-        if (Input.GetKey(KeyCode.S)) targetDirection += Vector2.down;
-        if (Input.GetKey(KeyCode.A)) targetDirection += Vector2.left;
-        if (Input.GetKey(KeyCode.D)) targetDirection += Vector2.right;
-
-        if (targetDirection.magnitude > 0)
+        if (!canMove)
         {
-            targetDirection.Normalize();
+            rb.velocity = Vector2.zero;
+            return;
         }
+
+        moveInput = playerInput.actions["Move"].ReadValue<Vector2>();
+
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            lastMoveDirection = moveInput;
+        }
+
+        animator.SetFloat("InputX", moveInput.x);
+        animator.SetFloat("InputY", moveInput.y);
+
+        targetDirection = moveInput.normalized;
+
+        isRunning = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
     }
 
-    private void UpdateCurrentDirection()
-    {
-        _currentDirection = Vector2.Lerp(_currentDirection, targetDirection.magnitude > 0 ? targetDirection : _currentDirection, directionSmoothing * Time.deltaTime);
-    }
+
 
     private void MoveCharacter()
     {
         if (targetDirection.magnitude > 0)
         {
-            float speed = _isRunning ? runSpeed : moveSpeed;
-
-            Debug.Log(currentSpeed);
+            speed = isRunning ? runSpeed : moveSpeed;
 
             Vector2 desiredPosition = (Vector2)transform.position + targetDirection * speed * Time.fixedDeltaTime;
 
@@ -108,42 +148,49 @@ public class PlayerControler : MonoBehaviour
         else
         {
             rb.velocity = Vector2.zero;
-        }
 
-        if (targetDirection.x > 0)
-        {
-            spriteRenderer.flipX = true; 
-        }
-        else if (targetDirection.x < 0)
-        {
-            spriteRenderer.flipX = false; 
+            speed = 0f;
         }
     }
 
-    private void UpdateAnimator()
+    private void CharacterAim()
     {
-        _animator.SetFloat("Horizontal", _currentDirection.x);
-        _animator.SetFloat("Vertical", _currentDirection.y);
-        _animator.SetFloat("Speed", currentSpeed);
+        Vector2 directionToUse = moveInput.sqrMagnitude > 0.01f ? moveInput : lastMoveDirection;
+
+        Vector3 vector3 = Vector3.left * directionToUse.x + Vector3.down * directionToUse.y;
+        Aim.rotation = Quaternion.LookRotation(Vector3.forward, vector3);
     }
 
-    private void UpdateHitAreaSpawnPoint()
+
+    private void SetLastMoveInput()
     {
-        if (_currentDirection.magnitude > 0)
-        {
-            Vector2 offset = _currentDirection.normalized * hitAreaHorizontalOffset;
-            offset.y += hitAreaVerticalOffset;
-            hitAreaSpawnPoint.position = (Vector2)transform.position + offset;
-        }
+        animator.SetFloat("LastInputX", lastMoveDirection.x);
+        animator.SetFloat("LastInputY", lastMoveDirection.y);
+
+        Vector3 vector3 = Vector3.left * lastMoveDirection.x + Vector3.down * lastMoveDirection.y;
+        Aim.rotation = Quaternion.LookRotation(Vector3.forward, vector3);
     }
 
     private void HandleAttack()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (!canAttack)
         {
-            GameObject instantiatedHitArea = Instantiate(hitArea, hitAreaSpawnPoint.position, hitAreaSpawnPoint.rotation);
-            Destroy(instantiatedHitArea, 0.4f);
-            _animator.SetTrigger("Attack");
-        }
+           return;  
+        } 
+        Debug.Log("Attack");
+        StartCoroutine(HandleAttackCoroutine());
+    }
+
+    private IEnumerator HandleAttackCoroutine()
+    {
+        canAttack = false;
+        animator.SetTrigger("Attack");
+        canMove = false;
+        attackHitbox.SetActive(true);
+        yield return new WaitForSeconds(0.5f);
+        attackHitbox.SetActive(false);
+        canMove = true;
+        yield return new WaitForSeconds(attackCooldown);
+        canAttack = true;
     }
 }
