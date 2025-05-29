@@ -1,93 +1,161 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class WizardMovement : MonoBehaviour
 {
-    public float speed = 2f;
-    public float stopDistance = 0.5f; // Distancia m�nima para detenerse cerca del jugador
-    public float attackDistance = 1f; // Distancia m�nima para atacar al jugador
-    private Rigidbody2D rb;
+    enum State { Idle, Chasing, Attacking, Cooldown }
+
+    [Header("Movement")]
+    public float moveSpeed = 2f;
+    public float stopDistance = 1f;          // when to stop chasing
+    public float retreatDistance = 0.5f;     // min distance boss ever gets
+    public float wobbleMagnitude = 0.3f;     // sideways noise
+    public float wobbleSpeed = 4f;           // noise frequency
+
+    [Header("Attack")]
+    public float attackDistance = 1.2f;
+    public float attackWindup = 0.3f;        // time before hit
+    public float attackDuration = 0.2f;      // hit active time
+    public float cd = 1.5f;                // cooldown after attack
+    public GameObject attackHitbox;
+
+    // control flags
+    public bool canMove = true;
+    public bool canAttack = true;
+
+    private State currentState = State.Idle;
     private Transform target;
-    private Vector2 moveDirection;
+    private Rigidbody2D rb;
     private Animator animator;
-    private SpriteRenderer spriteRenderer; // Referencia al componente SpriteRenderer
+    private Vector3 originalScale;
 
-    private bool canMove = true; // Variable para controlar el movimiento
-
-    private void Awake()
+    void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>(); // Obtener el componente Animator
-        spriteRenderer = GetComponent<SpriteRenderer>(); // Obtener el componente SpriteRenderer
+        animator = GetComponent<Animator>();
+        originalScale = transform.localScale;
     }
 
     void Start()
     {
-        target = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>();
+        target = PlayerControler.Instance.transform;
+        EnterState(State.Idle);
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (!canMove)
-        {
+        if (!canMove || target == null)
             return;
+
+        float dist = Vector2.Distance(transform.position, target.position);
+
+        switch (currentState)
+        {
+            case State.Idle:
+                if (dist < 5f)
+                    EnterState(State.Chasing);
+                break;
+
+            case State.Chasing:
+                HandleChasing(dist);
+                break;
+
+            case State.Attacking:
+                // attack coroutine is already running
+                break;
+
+            case State.Cooldown:
+                // waiting for cooldown to finish
+                break;
+        }
+    }
+
+    void HandleChasing(float dist)
+    {
+        float dirX = target.position.x - transform.position.x;
+        transform.localScale = new Vector3(Mathf.Sign(dirX) * Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
+
+        Vector2 toTarget = (target.position - transform.position).normalized;
+        Vector2 perp = new Vector2(-toTarget.y, toTarget.x);
+        float wobble = Mathf.Sin(Time.time * wobbleSpeed) * wobbleMagnitude;
+        Vector2 noisyDir = (toTarget + perp * wobble).normalized;
+
+        if (dist < retreatDistance)
+        {
+            noisyDir = -toTarget;
         }
 
-        if (target)
+
+        rb.velocity = noisyDir * moveSpeed;
+        animator.SetBool("Run", true);
+
+        if (canAttack && dist <= attackDistance)
         {
-            Vector3 direction = (target.position - transform.position).normalized;
-            float distance = Vector3.Distance(target.position, transform.position);
+            EnterState(State.Attacking);
+        }
 
+    }
 
-            if (distance > stopDistance)
-            {
-                moveDirection = direction;
-                animator.SetBool("Run", true);
+    private void EnterState(State newState)
+    {
+        currentState = newState;
 
-                // Invertir el sprite dependiendo de la direcci�n
-                if (moveDirection.x > 0)
-                {
-                    spriteRenderer.flipX = false; // Mirar a la derecha
-                }
-                else if (moveDirection.x < 0)
-                {
-                    spriteRenderer.flipX = true; // Mirar a la izquierda
-                }
-            }
-            else
-            {
-                moveDirection = Vector2.zero;
+        switch (newState)
+        {
+            case State.Idle:
+
+            case State.Attacking:
+                rb.velocity = Vector2.zero;
                 animator.SetBool("Run", false);
+                StartCoroutine(DoAttack());
+                break;
 
-                // Activar la animaci�n de ataque si est� dentro de la distancia de ataque
-                if (distance <= attackDistance)
-                {
-                    animator.SetTrigger("Attack");
-                }
-            }
+
+            case State.Cooldown:
+                rb.velocity = Vector2.zero;
+                animator.SetBool("Run", false);
+                break;
         }
     }
 
-    private void FixedUpdate()
+    public IEnumerator DoAttack()
     {
-        if (target)
+        // Temporarily block further attacks
+        canAttack = false;
+
+        // Active hit
+        attackHitbox.SetActive(true);
+        animator.SetTrigger("Attack");
+        yield return new WaitForSeconds(attackDuration);
+        attackHitbox.SetActive(false);
+
+        EnterState(State.Cooldown);
+        yield return new WaitForSeconds(cd);
+
+        if (canMove)
         {
-            rb.velocity = moveDirection * speed;
+            EnterState(State.Chasing);
         }
+
+        canAttack = true;
     }
-    
-    private void OnTriggerEnter2D(Collider2D collision)
+
+    public void StopMovement()
     {
-        if (collision.CompareTag("PlayerDamageCollider"))
-        {
-            canMove = false;
-            animator.Play("Death");
-        
-        }
+        canMove = false;
+        canAttack = false;
+        rb.velocity = Vector2.zero;
+        attackHitbox.SetActive(false);
+        animator.SetBool("Run", false);
+        currentState = State.Idle;
+        StopAllCoroutines();
     }
+
+    public void ResumeMovement()
+    {
+        canMove = true;
+        canAttack = true;
+        EnterState(State.Chasing);
+    }
+
 }
-
-
-

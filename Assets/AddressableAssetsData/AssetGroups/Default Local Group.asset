@@ -17,8 +17,8 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: afd48201dd927fe4abae98389c31cf92
   m_SerializeEntries:
-  - m_GUID: 351c5b7a757c1114abb4381051de142c
-    m_Address: Assets/Data/Dialogues/Level1.ink
+  - m_GUID: 5edd04714fce9fc42854d9bb5b28de44
+    m_Address: OnLillithDeath
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

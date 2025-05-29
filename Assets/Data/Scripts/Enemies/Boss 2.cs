@@ -47,7 +47,6 @@ public class Boss2 : MonoBehaviour
     public IEnumerator MoveTo(float x, float y, float duration)
     {
         Vector2 targetPosition = new Vector2(x, y);
-        float durationF = duration;
         float elapsedTime = 0f;
         Vector2 startingPosition = transform.position;
 

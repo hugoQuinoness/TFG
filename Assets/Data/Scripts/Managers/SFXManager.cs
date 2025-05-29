@@ -36,4 +36,9 @@ public class SFXManager : MonoBehaviour
         PlaySFX(typingClip);
     }
 
+    public void StopSFX()
+    {
+        sfxSource.Stop();
+    }
+
 }

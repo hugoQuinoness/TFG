@@ -1,3 +1,3 @@
-Evil Wizard: *c muere*
-Judas: :v
+Evil Wizard: How, your just a soulless body...
+Judas: What a pity.
 Evil Wizard: ... #kill:EvilWizard

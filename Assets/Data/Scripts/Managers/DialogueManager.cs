@@ -55,19 +55,22 @@ public class DialogueManager : MonoBehaviour
             Destroy(this);
         }
 
-        DialogueControls.InvokeContinueDialogue += ContinueDialogue;
-
         tagHandlers = new Dictionary<string, Action<string>>
         {
             { "animation", HandleAnimationTag },
             { "animateAndMove", HandleMoveWithAnimation},
+            { "wait", HandleWaitTag},
             { "song", HandleSongTag },
+            { "songOnce", HandleSongOnceTag },
+            { "kill", HandleKillTag }
         };
+
+        EventManager.ContinueDialogueEvent += ContinueDialogue;
     }
 
     private void OnDestroy()
     {
-        DialogueControls.InvokeContinueDialogue -= ContinueDialogue;
+        EventManager.ContinueDialogueEvent -= ContinueDialogue;
     }
 
     public void ContinueDialogue()
@@ -89,7 +92,7 @@ public class DialogueManager : MonoBehaviour
             {
                 StopCoroutine(typingCoroutine);
             }
-
+            SFXManager.Instance.StopSFX();
             HandleLine(currentStory.Continue());
             HandleTags(currentStory.currentTags);
         }
@@ -101,6 +104,7 @@ public class DialogueManager : MonoBehaviour
 
     public void EnterDialogueModeWithoutCollision(UnityEngine.TextAsset textAsset)
     {
+
         StartUI();
 
         InvokeOnDialogueEnter?.Invoke();
@@ -121,15 +125,23 @@ public class DialogueManager : MonoBehaviour
 
     public void ExitDialogueMode()
     {
-        EndUI();
+    EndUI();
 
-        isDialogueActive = false;
+    isDialogueActive = false;
 
-        currentDialogue = null;
+    currentDialogue = null;
 
-        Player.Instance.ChangeCameraPriority();
+    SFXManager.Instance.StopSFX();
 
-        InvokeOnDialogueExit?.Invoke();
+    Player.Instance.ChangeCameraPriority();
+
+    if (typingCoroutine != null)
+    {
+        StopCoroutine(typingCoroutine);
+        typingCoroutine = null;
+    }
+
+    InvokeOnDialogueExit?.Invoke();
     }
 
     public void HandleLine(string line)
@@ -149,7 +161,6 @@ public class DialogueManager : MonoBehaviour
             speakingCharacter = "";
             updatedText = line;
         }
-
         CheckSpeakerName(speakingCharacter);
         UpdateDialogue(updatedText);
     }
@@ -183,6 +194,22 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
+    private void HandleWaitTag(string value)
+    {
+        if (!float.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float waitTime))
+        {
+            return;
+        }
+
+        StartCoroutine(WaitCoroutine(waitTime));
+    }
+
+    private IEnumerator WaitCoroutine(float waitTime)
+    {
+        yield return new WaitForSeconds(waitTime);
+        tagsToHandle--;
+    }
+
     private void HandleMoveWithAnimation(string value)
     {
         string[] split = value.Split('_');
@@ -192,21 +219,20 @@ public class DialogueManager : MonoBehaviour
             return;
         }
 
-        if (!float.TryParse(split[0], out float x))
+        if (!float.TryParse(split[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x))
         {
             return;
         }
-        if (!float.TryParse(split[1], out float y))
+        if (!float.TryParse(split[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y))
         {
             return;
         }
-        if (!float.TryParse(split[2], out float time))
+        if (!float.TryParse(split[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float time))
         {
             return;
         }
 
         string characterName = split[3];
-
         string animationName = split[4];
 
         switch (characterName)
@@ -256,7 +282,6 @@ public class DialogueManager : MonoBehaviour
                 tagsToHandle--;
                 break;
             default:
-                Debug.LogWarning("Unknown animation tag: " + value);
                 break;
         }
     }
@@ -264,6 +289,33 @@ public class DialogueManager : MonoBehaviour
     private void HandleSongTag(string value)
     {
         SongManager.Instance.PlaySongFromAddressable(value);
+    }
+
+    private void HandleSongOnceTag(string value)
+    {
+
+        SongManager.Instance.PlaySongFromAddressableOnce(value);
+    }
+
+    private void HandleKillTag(string value)
+    {
+
+        switch (value)
+        {
+            case "Judas":
+                Destroy(Player.Instance.gameObject);
+                break;
+            case "EvilWizard":
+                Destroy(Boss.Instance.gameObject);
+                break;
+            case "DemonLord":
+                Destroy(Boss2.Instance.gameObject);
+                break;
+            default:
+                break;
+        }
+
+        tagsToHandle--;
     }
 
     public void StartUI()
@@ -282,7 +334,12 @@ public class DialogueManager : MonoBehaviour
 
     public void UpdateDialogue(string text)
     {
-        typingCoroutine = StartCoroutine(TypeTextEffect(text));
+    if (typingCoroutine != null)
+    {
+        StopCoroutine(typingCoroutine);
+        typingCoroutine = null;
+    }
+    typingCoroutine = StartCoroutine(TypeTextEffect(text));
     }
 
     private IEnumerator TypeTextEffect(string text)
@@ -311,19 +368,23 @@ public class DialogueManager : MonoBehaviour
         {
             case "Judas":
                 nameText.text = "Judas";
-
                 Player.Instance.ChangeCameraPriority();
                 portraitImage.sprite = Player.Instance.sprite;
                 break;
             case "Evil Wizard":
-                nameText.text = "Evil Wizard";
+                nameText.text = "Astaroth";
                 Boss.Instance.ChangeCameraPriority();
                 portraitImage.sprite = Boss.Instance.sprite;
                 break;
             case "Demon Lord":
                 nameText.text = "Demon Lord";
-                portraitImage.sprite = null;
                 Boss2.Instance.ChangeCameraPriority();
+                portraitImage.sprite = Boss2.Instance.sprite;
+                break;
+            case "Lilith":
+                nameText.text = "Lilith";
+                Boss.Instance.ChangeCameraPriority();
+                portraitImage.sprite = Boss.Instance.sprite;
                 break;
             default:
                 nameText.text = name;
@@ -331,12 +392,11 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
-    public IEnumerator StartDialogueByAdr3ss(string address)
+    public IEnumerator StartDialogueByAdress(string address)
     {
-
         if (currentHandle.HasValue && currentHandle.Value.IsValid())
         {
-            Debug.Log("[SongManager] Releasing previous handle");
+
             Addressables.Release(currentHandle.Value);
         }
 
@@ -344,12 +404,13 @@ public class DialogueManager : MonoBehaviour
 
         if (!currentHandle.HasValue)
         {
-            Debug.LogError("[SongManager] currentHandle is null after LoadAssetAsync!");
             yield break;
         }
 
         yield return currentHandle.Value;
-        
+
+        Debug.Log("Dialogue asset loaded successfully: " + currentHandle.Value.Result.name);
+
         EnterDialogueModeWithoutCollision(currentHandle.Value.Result);
 
     }

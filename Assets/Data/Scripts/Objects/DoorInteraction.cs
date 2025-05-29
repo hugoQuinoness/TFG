@@ -1,10 +1,28 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class DoorInteraction : MonoBehaviour
 {
     public bool isPlayerInRange = false;
+
+    public string sceneToLoad;
+
+    public int requiredKeyId;
+
+    public GameObject DoorVisual;
+
+    private Animator animator;
+
+    public bool interacted = false;
+
+
+    private void Awake()
+    {
+        animator = DoorVisual.GetComponent<Animator>();
+    }
 
 
     void Start()
@@ -14,7 +32,7 @@ public class DoorInteraction : MonoBehaviour
 
     void OnDestroy()
     {
-        EventManager.InteractEvent -= OnInteract;        
+        EventManager.InteractEvent -= OnInteract;
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -35,17 +53,33 @@ public class DoorInteraction : MonoBehaviour
 
     void OnInteract()
     {
-        if (!isPlayerInRange) return;
+        if (!isPlayerInRange)
+        {
+            return;
+        }
 
-        bool hasKey = Player.Instance.uniqueItems.Exists(item => item.id == 1);
+        if (interacted)
+        {
+            return;
+        }
+
+        bool hasKey = Player.Instance.uniqueItems.Exists(item => item.id == requiredKeyId);
 
         if (hasKey)
         {
-            Debug.Log("Door opened!");
+            SceneManager.LoadScene(sceneToLoad);
         }
         else
         {
-            Debug.Log("You need a key to open the door.");
+            StartCoroutine(LockedDoorCoroutine());
         }
+    }
+
+    private IEnumerator LockedDoorCoroutine()
+    {
+        interacted = true;
+        animator.SetTrigger("LockedDoor");
+        yield return new WaitForSeconds(1f);
+        interacted = false;
     }
 }

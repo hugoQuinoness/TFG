@@ -24,7 +24,6 @@ public class SpeakIcon : MonoBehaviour
 
     private void Update()
     {
-        // Floating animation
         float newX = initialPosition.x + Mathf.Sin(Time.time * floatSpeed) * floatAmplitude;
         float newY = initialPosition.y + Mathf.Sin(Time.time * floatSpeed) * floatAmplitude;
         transform.position = new Vector3(newX, newY, initialPosition.z);

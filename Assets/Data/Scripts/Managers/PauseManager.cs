@@ -30,8 +30,8 @@ public class PauseManager : MonoBehaviour
     }
 
     private void OnDestroy()
-    {
-
+    { 
+        EventManager.PauseEvent -= TogglePause;
     }
 
     public void TogglePause()
@@ -41,13 +41,13 @@ public class PauseManager : MonoBehaviour
         if (isPaused)
         {
             Time.timeScale = 0f;
-            PlayerControler.instance.canMove = false;
+            PlayerControler.Instance.canMove = false;
             EventSystem.current.SetSelectedGameObject(firstSelected);
             
         }
         else
         {
-            PlayerControler.instance.canMove = true;
+            PlayerControler.Instance.canMove = true;
             Time.timeScale = 1f;
             EventSystem.current.SetSelectedGameObject(null);
         }

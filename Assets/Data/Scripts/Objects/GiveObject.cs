@@ -12,7 +12,6 @@ public class GiveObject : MonoBehaviour
 
     public void GiveObjectToPlayer()
     {
-
         ObjectTemplate objectTemplate = new ObjectTemplate();
 
         objectTemplate.id = id;

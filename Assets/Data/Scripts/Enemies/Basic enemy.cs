@@ -2,31 +2,45 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Basicenemy : MonoBehaviour
+public class BasicEnemy : MonoBehaviour
 {
-    public Transform player; // Asigna el transform del jugador en el inspector
-    public float maxSpeed = 1.8f; // Velocidad máxima (más lento)
-    public float chaseDistance = 10f; // Distancia máxima para empezar a perseguir
-    public float minDistance = 0.5f; // Distancia mínima para detenerse cerca del jugador
-    public float slowDownDistance = 1.5f; // Distancia desde la cual empieza a desacelerar
+    public Transform player;
+    public float maxSpeed = 1.8f;
+    public float chaseDistance = 10f;
+    public float minDistance = 0.5f;
+
+    public float enemyAttackCooldown;
+
+    public GameObject enemyAttackHitbox;
 
     private Animator animator;
     private Vector3 originalScale;
+    private AudioSource audioSource;
     private bool canAttack = true;
+
+    public bool canMove = true;
+
+    public AudioClip deathSound;
+
 
     void Start()
     {
         animator = GetComponent<Animator>();
         originalScale = transform.localScale;
+        player = Player.Instance.transform;
+        audioSource = GetComponent<AudioSource>();
     }
 
     void Update()
     {
-        if (player == null) return;
+        if (!canMove)
+        {
+            return;
+        }
+
 
         float distance = Vector3.Distance(transform.position, player.position);
 
-        // Invertir sprite según la posición del jugador sin deformar
         if (player.position.x < transform.position.x)
         {
             transform.localScale = new Vector3(-Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
@@ -38,8 +52,7 @@ public class Basicenemy : MonoBehaviour
 
         if (distance < chaseDistance && distance > minDistance)
         {
-            float t = Mathf.InverseLerp(minDistance, slowDownDistance, distance);
-            float currentSpeed = Mathf.Lerp(0, maxSpeed, t);
+            float currentSpeed = maxSpeed;
 
             Vector3 direction = (player.position - transform.position).normalized;
             transform.position += direction * currentSpeed * Time.deltaTime;
@@ -51,7 +64,6 @@ public class Basicenemy : MonoBehaviour
             animator.SetBool("Running", false);
         }
 
-        // Ataque si está suficientemente cerca
         if (distance <= minDistance && canAttack)
         {
             StartCoroutine(AttackCoroutine());
@@ -61,8 +73,41 @@ public class Basicenemy : MonoBehaviour
     private IEnumerator AttackCoroutine()
     {
         canAttack = false;
+        canMove = false;
         animator.SetTrigger("Attack");
-        yield return new WaitForSeconds(1f); // Espera 1 segundo antes de permitir otro ataque
+        if (enemyAttackHitbox != null)
+        {
+            enemyAttackHitbox.SetActive(true);
+        }
+        yield return new WaitForSeconds(enemyAttackCooldown);
+
+        if (enemyAttackHitbox != null)
+        {
+            enemyAttackHitbox.SetActive(false);
+        }
         canAttack = true;
+        canMove = true;
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("PlayerDamageCollider"))
+        {
+            StartCoroutine(DeathCoroutine());
+        }
+    }
+
+    private IEnumerator DeathCoroutine()
+    {
+        canMove = false;
+        animator.Play("Death");
+        audioSource.PlayOneShot(deathSound);
+        yield return new WaitForSeconds(1f);
+        Destroy(gameObject);
+    }
+    
+    private void UpdateSFXAudioVolume(float volume)
+    {
+        audioSource.volume = volume;
     }
 }

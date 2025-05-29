@@ -7,77 +7,95 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(Animator), typeof(Rigidbody2D), typeof(BoxCollider2D))]
 public class PlayerControler : MonoBehaviour
 {
-    public static PlayerControler instance;
+    public static PlayerControler Instance;
 
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float runSpeed = 8f;
-    [SerializeField] private float directionSmoothing = 10f;
     private Vector2 lastMoveDirection;
     private Vector2 moveInput;
     public Transform Aim;
     private float speed;
     private float currentSpeed;
-
-    private bool canMove;
+    public bool canMove;
+    public bool isRunning;
+    public bool canBeHit = true;
 
     [Header("Attack Settings")]
     public GameObject attackHitbox;
     private float attackCooldown = 0.7f;
     private bool canAttack = true;
-
     private Animator animator;
     private Rigidbody2D rb;
     private Vector2 targetDirection;
-    public bool isRunning;
     private PlayerInput playerInput;
 
-    private Action<InputAction.CallbackContext> moveCanceledDelegate;
-    private Action<InputAction.CallbackContext> attackPerformedDelegate;
-    private Action<InputAction.CallbackContext> runPerformedDelegate;
-    private Action<InputAction.CallbackContext> runCanceledDelegate;
+    [Header("SFX")]
 
+    public AudioClip attackSound;
+
+    public AudioClip hitSound;
+
+    public AudioClip deathSound;
+
+    private AudioSource audioSource;
 
     void Awake()
     {
-        if (instance == null)
+        if (Instance == null)
         {
-            instance = this;
+            Instance = this;
         }
-        else if (instance != this)
+        else if (Instance != this)
         {
             Destroy(gameObject);
         }
 
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
+        audioSource = GetComponent<AudioSource>();
         playerInput = EventSystem.current.GetComponent<PlayerInput>();
 
-        // Store delegates for proper unsubscribe
-        moveCanceledDelegate = ctx => SetLastMoveInput();
-        attackPerformedDelegate = ctx => HandleAttack();
-        runPerformedDelegate = ctx => { isRunning = true; animator.SetBool("isRunning", true); };
-        runCanceledDelegate = ctx => { isRunning = false; animator.SetBool("isRunning", false); };
+        PlayerHealth.OnDeath += OnDeath;
 
-        playerInput.actions["Move"].canceled += moveCanceledDelegate;
-        playerInput.actions["Attack"].performed += attackPerformedDelegate;
-        playerInput.actions["Run"].performed += runPerformedDelegate;
-        playerInput.actions["Run"].canceled += runCanceledDelegate;
+        EventManager.AttackEvent += HandleAttack;
+
+        EventManager.RunEvent += OnRunStarted;
+
+        EventManager.RunCanceledEvent += OnRunCanceled;
+
+        EventManager.MoveEvent += OnMoveEvent;
+
     }
+
 
     void OnDestroy()
     {
-        if (playerInput != null && playerInput.actions != null)
+        if (Instance == this)
         {
-            playerInput.actions["Move"].canceled -= moveCanceledDelegate;
-            playerInput.actions["Attack"].performed -= attackPerformedDelegate;
-            playerInput.actions["Run"].performed -= runPerformedDelegate;
-            playerInput.actions["Run"].canceled -= runCanceledDelegate;
+            Instance = null;
         }
+
+        PlayerHealth.OnDeath -= OnDeath;
+        EventManager.AttackEvent -= HandleAttack;
+        EventManager.RunEvent -= OnRunStarted;
+        EventManager.RunCanceledEvent -= OnRunCanceled;
+        EventManager.MoveEvent -= OnMoveEvent;
     }
 
     void Update()
     {
+        if (!canMove)
+        {
+            rb.velocity = Vector2.zero;
+            return;
+        }
+        if (DialogueManager.Instance.isDialogueActive)
+        {
+            rb.velocity = Vector2.zero;
+            animator.SetBool("isMoving", false);
+            return;
+        }
         GetInputDirection();
         GetCharacterSpeed();
         animator.SetFloat("Speed", currentSpeed);
@@ -88,6 +106,12 @@ public class PlayerControler : MonoBehaviour
     void FixedUpdate()
     {
         if (!canMove)
+        {
+            rb.velocity = Vector2.zero;
+            return;
+        }
+
+        if (DialogueManager.Instance.isDialogueActive)
         {
             rb.velocity = Vector2.zero;
             return;
@@ -118,6 +142,12 @@ public class PlayerControler : MonoBehaviour
             return;
         }
 
+        if (DialogueManager.Instance.isDialogueActive)
+        {
+            rb.velocity = Vector2.zero;
+            return;
+        }
+
         moveInput = playerInput.actions["Move"].ReadValue<Vector2>();
 
         if (moveInput.sqrMagnitude > 0.01f)
@@ -129,8 +159,6 @@ public class PlayerControler : MonoBehaviour
         animator.SetFloat("InputY", moveInput.y);
 
         targetDirection = moveInput.normalized;
-
-        isRunning = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
     }
 
 
@@ -151,6 +179,23 @@ public class PlayerControler : MonoBehaviour
 
             speed = 0f;
         }
+    }
+
+    private void OnRunStarted()
+    {
+        animator.SetBool("isRunning", true);
+        isRunning = true;
+    }
+
+    private void OnRunCanceled()
+    {
+        animator.SetBool("isRunning", false);
+        isRunning = false;
+    }
+
+    private void OnMoveEvent()
+    {
+        SetLastMoveInput();
     }
 
     private void CharacterAim()
@@ -175,16 +220,36 @@ public class PlayerControler : MonoBehaviour
     {
         if (!canAttack)
         {
-           return;  
-        } 
-        Debug.Log("Attack");
+            return;
+        }
+
+        if (!canMove)
+        {
+            rb.velocity = Vector2.zero;
+            return;
+        }
+
+        if (DialogueManager.Instance.isDialogueActive)
+        {
+            rb.velocity = Vector2.zero;
+            return;
+        }
+
+        if (moveInput.sqrMagnitude > 0.01f)
+        {
+            lastMoveDirection = moveInput;
+        }
+
+        SetLastMoveInput();
+
         StartCoroutine(HandleAttackCoroutine());
     }
 
     private IEnumerator HandleAttackCoroutine()
     {
-        canAttack = false;
         animator.SetTrigger("Attack");
+        PlayAttackSound();
+        canAttack = false;
         canMove = false;
         attackHitbox.SetActive(true);
         yield return new WaitForSeconds(0.5f);
@@ -192,5 +257,37 @@ public class PlayerControler : MonoBehaviour
         canMove = true;
         yield return new WaitForSeconds(attackCooldown);
         canAttack = true;
+    }
+
+    public void PlayAttackSound()
+    {
+        audioSource.PlayOneShot(attackSound);
+    }
+
+    public void PlayHitSound()
+    {
+        audioSource.PlayOneShot(hitSound);
+    }
+
+    public void OnDeath()
+    {
+        Debug.Log("Player has died.");
+        audioSource.PlayOneShot(deathSound);
+        canMove = false;
+        canBeHit = false;
+        animator.SetTrigger("Death");
+        SongManager.Instance.PlaySongFromAddressable("GameOver");
+        rb.velocity = Vector2.zero;
+    }
+
+    public Animator GetAnimator()
+    {
+        return animator;
+    }
+
+    private void UpdateSFXAudioVolume(float volume)
+    {
+        audioSource.volume = volume;
+        Debug.Log($"[PlayerControler] SFX volume updated to: {volume}");
     }
 }

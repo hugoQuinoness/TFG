@@ -17,8 +17,33 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 925889ca981ff204bb2d7af84e2b47a7
   m_SerializeEntries:
+  - m_GUID: 25cd0e67920b22549bcb036f158ec0c5
+    m_Address: GameOver
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3c3aa9bcea85d90478286c14b62c0828
+    m_Address: FinalSong
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 447a17722a73cb7478841f68308f4277
     m_Address: TheRival
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6e2fb53f8c3023c47b21f8d676d2c057
+    m_Address: Truth
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 79969262df629a64a8eb6a0999b471f6
+    m_Address: FinalBoss
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 96c6131bae541e24a80da09033a6088d
+    m_Address: Redemption
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

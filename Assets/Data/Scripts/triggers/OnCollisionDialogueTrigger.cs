@@ -12,9 +12,19 @@ public class OnCollisionDialogueTrigger : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            StartCoroutine(DialogueManager.Instance.StartDialogueByAdress(dialogueAddress));
+            StartCoroutine(StartDialogueAndDestroy());
         }
     }
 
+
+    private IEnumerator StartDialogueAndDestroy()
+    {
+        yield return DialogueManager.Instance.StartDialogueByAdress(dialogueAddress);
+
+        if (destroyOnTrigger)
+        {
+            Destroy(gameObject);
+        }
+    }
 
 }

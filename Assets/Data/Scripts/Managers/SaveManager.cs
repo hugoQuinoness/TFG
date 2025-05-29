@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using BayatGames.SaveGameFree;
 using UnityEngine;
+using UnityEngine.Playables;
 using UnityEngine.SceneManagement;
 
 public class SaveManager : MonoBehaviour
@@ -20,6 +21,16 @@ public class SaveManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+    }
+
+    public void ResumeGame()
+    {
+        PauseManager.Instance.TogglePause();
+    }
+
+    public void QuitGame()
+    {
+        Application.Quit();
     }
 
     public void SavePlayerData()

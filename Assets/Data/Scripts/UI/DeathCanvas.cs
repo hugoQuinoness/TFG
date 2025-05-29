@@ -37,7 +37,7 @@ public class DeathCanvas : MonoBehaviour
     private IEnumerator PlayerDeathCoroutine()
     {
 
-        yield return new WaitForSeconds(2f); // Delay before playing death animation
+        yield return new WaitForSeconds(2f); 
 
         animator.Play("OnDeath");
 

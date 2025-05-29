@@ -8,15 +8,20 @@ public class Chest : MonoBehaviour
 
     private bool isOpen = false;
 
-    private bool isPlayerInRange;
+    public bool isPlayerInRange;
 
     public GiveObject giveObject;
+
+    public AudioClip openSound;
+
+    private AudioSource audioSource;
 
     void Start()
     {
         animator = GetComponent<Animator>();
         EventManager.InteractEvent += OnInteract;
         giveObject = GetComponent<GiveObject>();
+        audioSource = GetComponent<AudioSource>();
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -42,15 +47,20 @@ public class Chest : MonoBehaviour
             return;
         }
 
-        if (giveObject != null)
-        {
-            giveObject.GiveObjectToPlayer();
-        }
-
         if (isPlayerInRange)
         {
             animator.Play("Open");
             isOpen = true;
+            audioSource.PlayOneShot(openSound);
+        }
+        else
+        {
+            return;
+        }
+
+        if (giveObject != null)
+        {
+            giveObject.GiveObjectToPlayer();
         }
     }
 }

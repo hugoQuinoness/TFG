@@ -347,7 +347,7 @@ GameObject:
   - component: {fileID: 5073465811656567914}
   - component: {fileID: 5645919051660534193}
   m_Layer: 0
-  m_Name: Colliderfeet
+  m_Name: ColliderFeet
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -712,7 +712,7 @@ MonoBehaviour:
   isRunning: 0
   canBeHit: 1
   attackHitbox: {fileID: 2086218333184634329}
-  attackSound: {fileID: 0}
+  attackSound: {fileID: 8300000, guid: 8ca3ffae5d0e037418cddbeceaf2a65e, type: 3}
   hitSound: {fileID: 8300000, guid: f15be8fe057240345b2e52735e5e040c, type: 3}
   deathSound: {fileID: 8300000, guid: 978524796c4c2694fa0487f59d40c593, type: 3}
 --- !u!114 &3628361307922942809

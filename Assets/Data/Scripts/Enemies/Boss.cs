@@ -1,16 +1,25 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Boss : MonoBehaviour
+public class Boss : MonoBehaviour, IEnemy
 {
     public static Boss Instance;
 
+    [Header("Cinemachine")]
     public Cinemachine.CinemachineVirtualCamera virtualCamera;
 
-    private Animator animator;
+    [Header("Audio")]
+    public AudioClip hitSound;
+    public AudioClip deathSound;
 
-    private WizardMovement wizardMovement;
+    [Header("Dialogue")]
+    public string onDeathDialogueAddress;
+
+    private Animator animator;
+    private WizardMovement bossMovement;
+    private EnemyHealth enemyHealth;
+    private AudioSource audioSource;
+    private bool canBeHit = true;
 
     public Sprite sprite;
 
@@ -19,41 +28,38 @@ public class Boss : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-        }
-        else
+        }else 
         {
-            Destroy(this);
-        }
+            Destroy(gameObject);
+        } 
+        
 
+        audioSource = GetComponent<AudioSource>();
         animator = GetComponent<Animator>();
-
+        bossMovement = GetComponent<WizardMovement>();
         virtualCamera = GetComponentInChildren<Cinemachine.CinemachineVirtualCamera>();
 
-        wizardMovement = GetComponent<WizardMovement>();
+        TryGetComponent(out enemyHealth);
 
         DialogueManager.InvokeOnDialogueEnter += OnEnterDialogueMode;
-
         DialogueManager.InvokeOnDialogueExit += OnExitDialogueMode;
-
     }
 
-    public void OnDestroy()
+    void OnDestroy()
     {
         DialogueManager.InvokeOnDialogueEnter -= OnEnterDialogueMode;
-
-        DialogueManager.InvokeOnDialogueExit -= OnExitDialogueMode;
+        DialogueManager.InvokeOnDialogueExit  -= OnExitDialogueMode;
     }
 
-    public void OnEnterDialogueMode()
+    private void OnEnterDialogueMode()
     {
-        wizardMovement.enabled = false;
+        bossMovement.enabled = false;
     }
 
-    public void OnExitDialogueMode()
+    private void OnExitDialogueMode()
     {
-        wizardMovement.enabled = true;
+        bossMovement.enabled = true;
     }
-
 
     public void ChangeCameraPriority()
     {
@@ -61,7 +67,6 @@ public class Boss : MonoBehaviour
         {
             CMCameraManager.Instance.currentCinemachineVCamera = virtualCamera;
         }
-
         CMCameraManager.Instance.ChangeVcamPriority(virtualCamera);
     }
 
@@ -72,20 +77,79 @@ public class Boss : MonoBehaviour
 
     public IEnumerator MoveTo(float x, float y, float duration)
     {
-        Vector2 targetPosition = new Vector2(x, y);
-        float durationF = duration;
-        float elapsedTime = 0f;
-        Vector2 startingPosition = transform.position;
+        Vector2 startPos = transform.position;
+        Vector2 endPos   = new Vector2(x, y);
+        float elapsed    = 0f;
 
-        while (elapsedTime < duration)
+        while (elapsed < duration)
         {
-            transform.position = Vector2.Lerp(startingPosition, targetPosition, (elapsedTime / duration));
-            elapsedTime += Time.deltaTime;
+            transform.position = Vector2.Lerp(startPos, endPos, elapsed / duration);
+            elapsed += Time.deltaTime;
             yield return null;
         }
-        transform.position = targetPosition;
+        transform.position = endPos;
         DialogueManager.Instance.tagsToHandle--;
     }
 
+    private void OnTriggerEnter2D(Collider2D col)
+    {
+        if (!col.CompareTag("PlayerDamageCollider") || enemyHealth == null)
+            return;
 
+        var dmg = col.GetComponent<PlayerWeapon>().damage;
+
+        enemyHealth.health -= dmg;
+
+        if (enemyHealth.health <= 0)
+        {
+            if (canBeHit)
+            {
+                StartCoroutine(HandleDeath());
+            } 
+        }
+        else
+        {
+            if (canBeHit)
+            {
+                StartCoroutine(HandleHit());
+            } 
+        }
+    }
+
+    private IEnumerator HandleDeath()
+    {
+        canBeHit = false;
+        bossMovement.StopMovement();
+        animator.Play("Death");
+        audioSource.PlayOneShot(deathSound);
+        yield return DialogueManager.Instance.StartDialogueByAdress(onDeathDialogueAddress);
+    }
+
+    private IEnumerator HandleHit()
+    {
+        canBeHit = false;
+        bossMovement.StopMovement();
+        audioSource.PlayOneShot(hitSound);
+        animator.Play("TakeHit");
+
+        var sr = GetComponent<SpriteRenderer>();
+        Color original = sr.color;
+        for (int i = 0; i < 3; i++)
+        {
+            sr.color = Color.red;
+            yield return new WaitForSeconds(0.1f);
+            sr.color = original;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        yield return new WaitForSeconds(0.5f);
+        animator.Play("Idle");
+        canBeHit = true;
+        bossMovement.ResumeMovement();
+    }
+
+    public void OnPlayerDetected()
+    {
+        throw new System.NotImplementedException();
+    }
 }

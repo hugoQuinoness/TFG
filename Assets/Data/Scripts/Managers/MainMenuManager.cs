@@ -1,7 +1,6 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using UnityEngine.SceneManagement;
 
 public class MainMenuManager : MonoBehaviour
@@ -13,6 +12,7 @@ public class MainMenuManager : MonoBehaviour
 
     public Animator transitionPanel;
 
+
     private void Awake()
     {
         if (Instance == null)
@@ -23,6 +23,8 @@ public class MainMenuManager : MonoBehaviour
         {
             Destroy(this);
         }
+
+        Addressables.InitializeAsync();
     }
        
 
@@ -33,6 +35,16 @@ public class MainMenuManager : MonoBehaviour
             return;
         }
         StartCoroutine(LoadSceneAsync(sceneName));
+    }
+
+    public void LoadSceneNoAsync(string sceneName)
+    {
+        SceneManager.LoadScene(sceneName);
+    }
+
+    public void DebugButtonPressed()
+    {
+        Debug.Log("Debug button pressed");
     }
 
     public void OpenOptionsMenu()

@@ -17,6 +17,11 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: b039e6de94fb69a4fa8bd84d27fcd822
   m_SerializeEntries:
+  - m_GUID: 04a30f86642d1bb4a8c04c7aa1366901
+    m_Address: LillithStartingDialogue
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 98dec850eb4a2bd4b872ad0dacbe42d9
     m_Address: EvilWizardDeath
     m_ReadOnly: 0

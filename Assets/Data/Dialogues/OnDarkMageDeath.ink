@@ -1,2 +1,2 @@
-Judas:Well that was way easier than expected...
-Judas:Anyways, I really gotta leave this place now!
+Judas:I thought you were the most strong soldier but you were just full of pride.
+Judas:I need to get out of here, I hope Lilith is okay.

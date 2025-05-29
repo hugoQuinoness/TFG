@@ -7,15 +7,15 @@ public class Player : MonoBehaviour
 {
     public static Player Instance;
 
-    private DialogueControls dialogueControls;
-
-    private PlayerControler playerControler;
-
     private CinemachineVirtualCamera virtualCamera;
 
     private Animator animator;
 
     public Sprite sprite;
+
+    public EventManager eventManagerPrefab;
+
+    public List<ObjectTemplate> uniqueItems;
 
     private void Awake()
     {
@@ -28,43 +28,30 @@ public class Player : MonoBehaviour
             Destroy(gameObject);
         }
 
-        dialogueControls = GetComponent<DialogueControls>();
-
-        playerControler = GetComponent<PlayerControler>();
-
         virtualCamera = GetComponentInChildren<CinemachineVirtualCamera>();
 
         animator = GetComponent<Animator>();
 
-        DialogueManager.InvokeOnDialogueEnter += OnEnterDialogueMode;
-
-        DialogueManager.InvokeOnDialogueExit += OnExitDialogueMode;
+        uniqueItems = new List<ObjectTemplate>();
     }
 
-    private void OnDestroy()
+    private void Start()
     {
+        if (EventManager.Instance == null)
+        {
+            Debug.Log("EventManager not found, instantiating a new one.");
+            Instantiate(eventManagerPrefab);
+        }
         
-        DialogueManager.InvokeOnDialogueEnter -= OnEnterDialogueMode;
-
-        DialogueManager.InvokeOnDialogueExit -= OnExitDialogueMode;
-    }
-
-
-    private void OnEnterDialogueMode()
-    {
-        dialogueControls.enabled = true;
-        playerControler.enabled = false;
-    }
-
-    private void OnExitDialogueMode()
-    {
-        dialogueControls.enabled = false;
-        playerControler.enabled = true;
+        foreach (ObjectTemplate item in uniqueItems)
+        {
+            Debug.Log($"Unique item: {item.name} with ID: {item.id}");
+        }
     }
 
     public void ChangeCameraPriority()
     {
-        if(CMCameraManager.Instance.currentCinemachineVCamera == null)
+        if (CMCameraManager.Instance.currentCinemachineVCamera == null)
         {
             CMCameraManager.Instance.currentCinemachineVCamera = virtualCamera;
         }
@@ -74,16 +61,23 @@ public class Player : MonoBehaviour
 
     public void PlayAnimation(string animation)
     {
-        animator.Play(animation);
+        if (animation == "Attack")
+        {
+            animator.SetTrigger("Attack");
+        }
+        else
+        {
+            animator.Play(animation);
+        }
     }
 
     public IEnumerator MoveTo(float x, float y, float duration)
     {
-        Vector2 targetPosition = new Vector2(x, y); 
-        float durationF = duration; 
+        Vector2 targetPosition = new Vector2(x, y);
+        float durationF = duration;
         float elapsedTime = 0f;
         Vector2 startingPosition = transform.position;
-        
+
         while (elapsedTime < duration)
         {
             transform.position = Vector2.Lerp(startingPosition, targetPosition, (elapsedTime / duration));
@@ -93,4 +87,6 @@ public class Player : MonoBehaviour
         transform.position = targetPosition;
         DialogueManager.Instance.tagsToHandle--;
     }
+    
+
 }
